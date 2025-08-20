@@ -1,0 +1,46 @@
+name: toilet_app
+description: "A new Flutter project."
+
+# Prevent accidental publishing to pub.dev.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  soundpool: ^2.3.0
+  mobile_scanner: ^6.0.3
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  provider: ^6.1.5
+  google_fonts: 4.0.4
+  shared_preferences: ^2.3.2
+
+  # Add the http package for making REST calls to our AWS backend.
+  http: ^0.13.6
+
+  # Added to render a map without requiring API keys. flutter_map uses
+  # OpenStreetMap tiles and lets us plot points for each restroom.
+  flutter_map: ^4.0.0
+  # Utility package for handling latitude/longitude values with flutter_map.
+  latlong2: ^0.8.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Enable generation of localized Strings from arb files.
+  generate: true
+
+  assets:
+    # Add assets from the images directory to the application.
+    - assets/images/
