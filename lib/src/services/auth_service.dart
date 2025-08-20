@@ -112,4 +112,39 @@ class AuthService {
       throw Exception('Resend failed: ${resp.statusCode} ${resp.body}');
     }
   }
+  
+  Future<void> startPasswordReset(String username) async {
+    final resp = await http.post(
+      _u('/forgot'), headers: _headers,
+      body: jsonEncode({'username': username}),
+    );
+    if (resp.statusCode != 202) {
+      throw Exception('Forgot password failed: ${resp.statusCode} ${resp.body}');
+    }
+  }
+
+  Future<User> completePasswordReset({
+    required String username,
+    required String code,
+    required String newPassword,
+    String? deviceId,
+  }) async {
+    final resp = await http.post(
+      _u('/reset'), headers: _headers,
+      body: jsonEncode({
+        'username': username,
+        'code': code,
+        'newPassword': newPassword,
+        if (deviceId != null) 'deviceId': deviceId,
+      }),
+    );
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw Exception('Reset failed: ${resp.statusCode} ${resp.body}');
+    }
+    final decoded = _unwrap(resp);
+    if (decoded is Map && decoded['user'] is Map && decoded['token'] is String) {
+      return _toUser(decoded['user'] as Map, decoded['token'] as String);
+    }
+    throw Exception('Unexpected reset response');
+  }
 }

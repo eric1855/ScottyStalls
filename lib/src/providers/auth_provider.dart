@@ -73,4 +73,25 @@ class AuthProvider with ChangeNotifier {
     _user = User.guest();
     notifyListeners();
   }
+
+  Future<void> startPasswordReset(String username) async {
+    await _service.startPasswordReset(username);
+  }
+
+  Future<void> completePasswordReset({
+    required String username,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _ensureDeviceId();
+    final u = await _service.completePasswordReset(
+      username: username,
+      code: code,
+      newPassword: newPassword,
+      deviceId: _deviceId,
+    );
+    _user = u;           // auto-login after reset
+    notifyListeners();
+  }
+
 }

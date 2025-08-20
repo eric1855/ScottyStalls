@@ -4,6 +4,7 @@ import 'home_page.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'verify_code_page.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -40,11 +41,66 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  String _friendlyMessage(Object error) {
+    final s = error.toString();
+
+    // Try to pull {"error":"..."} from response body if present
+    try {
+      final m = RegExp(r'{"error"\s*:\s*"([^"]+)"}').firstMatch(s);
+      if (m != null) return m.group(1)!;
+    } catch (_) {}
+
+    // Common status codes/phrases from our backend
+    if (_mode == _AuthMode.login && (s.contains('401') || s.toLowerCase().contains('invalid credentials'))) {
+      return 'Username and/or password incorrect.';
+    }
+    if (_mode == _AuthMode.login && s.contains('404')) {
+      return 'Account not found.';
+    }
+    if (_mode == _AuthMode.register && s.contains('409')) {
+      return 'Username or email already in use.';
+    }
+    if (s.contains('410') || s.toLowerCase().contains('expired')) {
+      return 'The code has expired. Please request a new one.';
+    }
+    if (s.contains('422') || s.toLowerCase().contains('required')) {
+      return 'Please fill out all required fields.';
+    }
+
+    // Network-ish hints
+    final lower = s.toLowerCase();
+    if (lower.contains('socketexception') ||
+        lower.contains('failed host lookup') ||
+        lower.contains('network') ||
+        lower.contains('connection refused') ||
+        lower.contains('timed out')) {
+      return 'Network error. Please check your connection and try again.';
+    }
+
+    // Fallback
+    return 'Something went wrong. Please try again.';
+  }
+
   Future<void> _submit() async {
     final auth = context.read<AuthProvider>();
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
     final email = _emailController.text.trim();
+
+    // Basic guardrails (user-side validation)
+    if (_mode == _AuthMode.login && (username.isEmpty || password.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter username and password')),
+      );
+      return;
+    }
+    if (_mode == _AuthMode.register &&
+        (username.isEmpty || email.isEmpty || password.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter username, email, and password')),
+      );
+      return;
+    }
 
     showDialog(
       context: context,
@@ -60,7 +116,8 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.of(context).pop(); // close spinner
         if (res.codeRequired) {
           Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => VerifyCodePage(username: res.username, purpose: 'login'),
+            builder: (_) =>
+                VerifyCodePage(username: res.username, purpose: 'login'),
           ));
         } else {
           Navigator.of(context).pushReplacement(
@@ -73,7 +130,8 @@ class _LoginPageState extends State<LoginPage> {
         Navigator.of(context).pop();
         if (res.codeRequired) {
           Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => VerifyCodePage(username: res.username, purpose: 'register'),
+            builder: (_) =>
+                VerifyCodePage(username: res.username, purpose: 'register'),
           ));
         } else {
           Navigator.of(context).pushReplacement(
@@ -83,10 +141,11 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      Navigator.of(context).pop(); // close spinner
+      final msg = _friendlyMessage(e);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 
@@ -152,6 +211,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ],
         );
+
       case _AuthMode.login:
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -173,11 +233,24 @@ class _LoginPageState extends State<LoginPage> {
                     _obscurePassword ? Icons.visibility_off : Icons.visibility,
                     color: Colors.grey.shade600,
                   ),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                  );
+                },
+                child: const Text('Forgot password?'),
+              ),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -198,6 +271,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ],
         );
+
       case _AuthMode.register:
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -205,9 +279,15 @@ class _LoginPageState extends State<LoginPage> {
           children: [
             _buildHeader(context),
             const SizedBox(height: 32),
-            TextField(controller: _usernameController, decoration: _filled('Username')),
+            TextField(
+              controller: _usernameController,
+              decoration: _filled('Username'),
+            ),
             const SizedBox(height: 16),
-            TextField(controller: _emailController, decoration: _filled('Email')),
+            TextField(
+              controller: _emailController,
+              decoration: _filled('Email'),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: _passwordController,
@@ -218,7 +298,8 @@ class _LoginPageState extends State<LoginPage> {
                     _obscurePassword ? Icons.visibility_off : Icons.visibility,
                     color: Colors.grey.shade600,
                   ),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
             ),
@@ -249,7 +330,8 @@ class _LoginPageState extends State<LoginPage> {
         filled: true,
         fillColor: Colors.white,
         hintText: hint,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
