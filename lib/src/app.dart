@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +12,7 @@ import 'settings/settings_view.dart';
 import 'providers/auth_provider.dart';
 import 'providers/restroom_provider.dart';
 import 'services/api_service.dart';
+import 'providers/location_provider.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key, required this.settingsController});
@@ -31,6 +31,9 @@ class MyApp extends StatelessWidget {
             ChangeNotifierProvider<AuthProvider>(
               create: (_) => AuthProvider(apiBaseUrl),
             ),
+            ChangeNotifierProvider<LocationProvider>(
+              create: (_) => LocationProvider(),
+            ),
             ChangeNotifierProxyProvider<AuthProvider, RestroomProvider>(
               create: (context) {
                 final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -48,14 +51,12 @@ class MyApp extends StatelessWidget {
           child: MaterialApp(
             restorationScopeId: 'app',
             localizationsDelegates: const [
-              AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: const [Locale('en', '')],
-            onGenerateTitle: (BuildContext context) =>
-                AppLocalizations.of(context)!.appTitle,
+            onGenerateTitle: (BuildContext context) => 'Restroom Finder',
             theme: ThemeData(
               scaffoldBackgroundColor: const Color(0xFFFAFAFA),
               appBarTheme: const AppBarTheme(

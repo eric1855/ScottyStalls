@@ -10,7 +10,6 @@ environment:
   sdk: ">=3.5.0 <4.0.0"
 
 dependencies:
-  soundpool: ^2.3.0
   mobile_scanner: ^6.0.3
   flutter:
     sdk: flutter
@@ -28,6 +27,10 @@ dependencies:
   flutter_map: ^4.0.0
   # Utility package for handling latitude/longitude values with flutter_map.
   latlong2: ^0.8.1
+  
+  # Location services for live tracking
+  geolocator: ^11.0.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

@@ -4,12 +4,12 @@ import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'models/restroom.dart';
-import 'review_page.dart';
 import 'reader_review_page.dart';
 import 'profile_page.dart';
 import 'package:provider/provider.dart';
 import 'providers/restroom_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/location_provider.dart';
 
 /// The home screen of the restroom reviewer app.
 ///
@@ -34,45 +34,37 @@ class _HomePageState extends State<HomePage> {
   final TextEditingController _searchController = TextEditingController();
   bool _useMyLocation = true;
 
-  // The list of restrooms is now loaded from the backend via the
-  // [RestroomProvider]. We no longer maintain a hard‑coded list here.
-
-  // Fallback user location. In a real app you would use a location plugin to
-  // get the current position. These coordinates roughly represent the centre
-  // of campus.
-  final LatLng _myLocation = LatLng(40.4440, -79.9600);
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
+  // Remove the hardcoded _myLocation since we'll get it from the provider
 
   @override
   void initState() {
     super.initState();
-    // Trigger loading of restrooms once the widget has been inserted into the
-    // widget tree. We use addPostFrameCallback to ensure that a context
-    // exists when calling the provider.
+    // Initialize location provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        context.read<LocationProvider>().initialize();
         context.read<RestroomProvider>().loadRestrooms();
       }
     });
   }
 
   void _centerOnUser() {
-    // In a real app, update _myLocation using a location service. Here we just
-    // centre the map controller on the hard‑coded location.
-    _mapController.move(_myLocation, 16);
+    final locationProvider = context.read<LocationProvider>();
+    if (locationProvider.hasPermission && locationProvider.currentLocation != null) {
+      _mapController.move(locationProvider.currentLocation!, 16);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Load restrooms from the provider. When the provider has not yet
-    // fetched data this list will be empty; a loading indicator is shown.
     final restroomProvider = context.watch<RestroomProvider>();
+    final locationProvider = context.watch<LocationProvider>();
+    
+    // Get current user location from provider
+    final userLocation = locationProvider.currentLocation ?? 
+        LatLng(40.4440, -79.9600); // Fallback location
+    
     final restrooms = restroomProvider.restrooms;
     final query = _searchController.text.toLowerCase();
     final List<Restroom> visibleRestrooms = query.isEmpty
@@ -93,7 +85,7 @@ class _HomePageState extends State<HomePage> {
               child: FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
-                  center: _myLocation,
+                  center: userLocation,
                   zoom: 16.0,
                   maxZoom: 18.0,
                   minZoom: 14.0,
@@ -104,6 +96,19 @@ class _HomePageState extends State<HomePage> {
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.toilet_app',
                   ),
+                  // User location marker (blue dot)
+                  if (locationProvider.hasPermission && locationProvider.currentLocation != null)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          width: 24,
+                          height: 24,
+                          point: locationProvider.currentLocation!,
+                          builder: (ctx) => _buildUserLocationMarker(),
+                        ),
+                      ],
+                    ),
+                  // Restroom markers
                   MarkerLayer(
                     markers: visibleRestrooms
                         .map(
@@ -126,9 +131,49 @@ class _HomePageState extends State<HomePage> {
               const Center(
                 child: CircularProgressIndicator(),
               ),
+            
+            // Location permission banner
+            if (!locationProvider.hasPermission && !locationProvider.isLoading)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_off, color: Colors.orange.shade700),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Location access needed for live tracking',
+                          style: TextStyle(
+                            color: Colors.orange.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => locationProvider.requestPermission(),
+                        child: Text(
+                          'Enable',
+                          style: TextStyle(color: Colors.orange.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             // Top area with search bar and location toggle
             Positioned(
-              top: 12,
+              top: locationProvider.hasPermission ? 12 : 80, // Adjust position if banner is shown
               left: 16,
               right: 16,
               child: Column(
@@ -247,10 +292,33 @@ class _HomePageState extends State<HomePage> {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildBottomSheet(context, visibleRestrooms),
+              child: _buildBottomSheet(context, visibleRestrooms, userLocation),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Builds the user's location marker (blue dot).
+  Widget _buildUserLocationMarker() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.blue,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.my_location,
+        color: Colors.white,
+        size: 16,
       ),
     );
   }
@@ -284,7 +352,7 @@ class _HomePageState extends State<HomePage> {
 
   /// Builds the bottom sheet listing all visible restrooms.
   Widget _buildBottomSheet(
-      BuildContext context, List<Restroom> visibleRestrooms) {
+      BuildContext context, List<Restroom> visibleRestrooms, LatLng userLocation) {
     final theme = Theme.of(context);
     return Container(
       decoration: const BoxDecoration(
@@ -322,7 +390,7 @@ class _HomePageState extends State<HomePage> {
                 final restroom = visibleRestrooms[index];
                 final distance = Distance().as(
                   LengthUnit.Mile,
-                  _myLocation,
+                  userLocation, // Use actual user location instead of hardcoded
                   LatLng(restroom.latitude, restroom.longitude),
                 );
                 return InkWell(
