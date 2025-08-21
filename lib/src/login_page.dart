@@ -129,6 +129,9 @@ class _LoginPageState extends State<LoginPage> {
         if (!mounted) return;
         Navigator.of(context).pop();
         if (res.codeRequired) {
+          ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('Verification code sent. Check your email.')));
           Navigator.of(context).push(MaterialPageRoute(
             builder: (_) =>
                 VerifyCodePage(username: res.username, purpose: 'register'),
@@ -317,6 +320,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: const Text('Register'),
               ),
             ),
+            const SizedBox(height: 16),
             TextButton(
               onPressed: () => _toMode(_AuthMode.choose),
               child: const Text('Back'),
