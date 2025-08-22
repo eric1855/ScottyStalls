@@ -21,14 +21,18 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+  bool _submitting = false; // debounce
 
   @override
   void dispose() {
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
@@ -44,14 +48,15 @@ class _LoginPageState extends State<LoginPage> {
   String _friendlyMessage(Object error) {
     final s = error.toString();
 
-    // Try to pull {"error":"..."} from response body if present
+    // Pull {"error":"..."} if present
     try {
       final m = RegExp(r'{"error"\s*:\s*"([^"]+)"}').firstMatch(s);
       if (m != null) return m.group(1)!;
     } catch (_) {}
 
-    // Common status codes/phrases from our backend
-    if (_mode == _AuthMode.login && (s.contains('401') || s.toLowerCase().contains('invalid credentials'))) {
+    // Common backend patterns
+    if (_mode == _AuthMode.login &&
+        (s.contains('401') || s.toLowerCase().contains('invalid credentials'))) {
       return 'Username and/or password incorrect.';
     }
     if (_mode == _AuthMode.login && s.contains('404')) {
@@ -66,6 +71,9 @@ class _LoginPageState extends State<LoginPage> {
     if (s.contains('422') || s.toLowerCase().contains('required')) {
       return 'Please fill out all required fields.';
     }
+    if (s.contains('502') || s.toLowerCase().contains('internal server error')) {
+      return 'Server error during registration. Please try again in a moment.';
+    }
 
     // Network-ish hints
     final lower = s.toLowerCase();
@@ -77,21 +85,26 @@ class _LoginPageState extends State<LoginPage> {
       return 'Network error. Please check your connection and try again.';
     }
 
-    // Fallback
     return 'Something went wrong. Please try again.';
   }
 
   Future<void> _submit() async {
+    if (_submitting) return;
+    _submitting = true;
+    FocusScope.of(context).unfocus();
+
     final auth = context.read<AuthProvider>();
     final username = _usernameController.text.trim();
     final password = _passwordController.text;
+    final confirm  = _confirmController.text;
     final email = _emailController.text.trim();
 
-    // Basic guardrails (user-side validation)
+    // Basic guardrails
     if (_mode == _AuthMode.login && (username.isEmpty || password.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter username and password')),
       );
+      _submitting = false;
       return;
     }
     if (_mode == _AuthMode.register &&
@@ -99,9 +112,18 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter username, email, and password')),
       );
+      _submitting = false;
+      return;
+    }
+    if (_mode == _AuthMode.register && password != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match.')),
+      );
+      _submitting = false;
       return;
     }
 
+    // Spinner
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -110,6 +132,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       late ({bool codeRequired, String username}) res;
+
       if (_mode == _AuthMode.login) {
         res = await auth.login(username, password);
         if (!mounted) return;
@@ -127,11 +150,12 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         res = await auth.register(username, email, password);
         if (!mounted) return;
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(); // close spinner
         if (res.codeRequired) {
           ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('Verification code sent. Check your email.')));
+            ..hideCurrentSnackBar()
+            ..showSnackBar(const SnackBar(
+                content: Text('Verification code sent. Check your email. You got 10 minutes.')));
           Navigator.of(context).push(MaterialPageRoute(
             builder: (_) =>
                 VerifyCodePage(username: res.username, purpose: 'register'),
@@ -149,6 +173,8 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(msg)));
+    } finally {
+      _submitting = false;
     }
   }
 
@@ -303,6 +329,21 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   onPressed: () =>
                       setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _confirmController,
+              obscureText: _obscureConfirm,
+              decoration: _filled('Confirm Password').copyWith(
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey.shade600,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
             ),

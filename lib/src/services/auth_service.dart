@@ -12,21 +12,41 @@ class AuthService {
   final String baseUrl;
   const AuthService({required this.baseUrl});
 
-  Map<String, String> get _headers => {'Content-Type': 'application/json'};
+  Map<String, String> get _headers => {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
 
   Uri _u(String p) {
-    final base = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
+    final base =
+        baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
     final path = p.startsWith('/') ? p : '/$p';
     return Uri.parse('$base$path');
   }
 
+  /// Unwraps API Gateway payloads:
+  /// - plain JSON {..}
+  /// - proxy-wrapped { statusCode, body: "..." }
+  /// - double-encoded strings
   dynamic _unwrap(http.Response resp) {
-    dynamic data = jsonDecode(resp.body);
-    if (data is Map &&
-        data.containsKey('body') &&
-        (data.containsKey('statusCode') || data.containsKey('StatusCode'))) {
+    dynamic data;
+    try {
+      data = jsonDecode(resp.body);
+    } catch (_) {
+      // body wasn't JSON; return raw string
+      return resp.body;
+    }
+    if (data is Map && data.containsKey('body')) {
       final b = data['body'];
-      data = b is String ? jsonDecode(b) : b;
+      if (b is String) {
+        try {
+          final inner = jsonDecode(b);
+          return inner;
+        } catch (_) {
+          return b; // leave as string
+        }
+      }
+      return b; // already an object
     }
     return data;
   }
@@ -39,8 +59,8 @@ class AuthService {
         token: token,
       );
 
-  // lib/services/auth_service.dart (inside class AuthService)
-Future<AuthResult> register({
+  // ---------- Register ----------
+  Future<AuthResult> register({
     required String username,
     required String email,
     required String password,
@@ -51,69 +71,107 @@ Future<AuthResult> register({
       body: jsonEncode({'username': username, 'email': email, 'password': password}),
     );
 
-    // Try to parse the payload (handles API GW proxy-wrapped and plain)
     final decoded = _unwrap(resp);
 
-    // Path 1: Proper 202 from API Gateway
+    // 202 => explicitly verification required
     if (resp.statusCode == 202) {
       return const AuthResult(codeRequired: true);
     }
 
-    // Path 2: Some setups return 200 with a JSON flag instead of 202
+    // Any 2xx
     if (resp.statusCode >= 200 && resp.statusCode < 300) {
-      if (decoded is Map<String, dynamic>) {
-        // Immediate login case: { user: {...}, token: "..." }
-        if (decoded['user'] is Map && decoded['token'] is String) {
-          return AuthResult(user: _toUser(decoded['user'] as Map, decoded['token'] as String));
-        }
+      // Immediate success case: { user, token }
+      if (decoded is Map && decoded['user'] is Map && decoded['token'] is String) {
+        return AuthResult(user: _toUser(decoded['user'] as Map, decoded['token'] as String));
+      }
 
-        // Verification required case: { status: "VERIFICATION_REQUIRED", username: "..." }
+      // Explicit status flag
+      if (decoded is Map) {
         final status = (decoded['status'] ?? decoded['Status'] ?? '').toString();
         if (status.toUpperCase() == 'VERIFICATION_REQUIRED') {
           return const AuthResult(codeRequired: true);
         }
-
-        // Sometimes people put the payload inside 'body' as a JSON string (already handled in _unwrap),
-        // but if you still see { body: { status: ... } }, handle it here:
-        final bodyField = decoded['body'];
-        if (bodyField is Map) {
-          final innerStatus = (bodyField['status'] ?? bodyField['Status'] ?? '').toString();
-          if (innerStatus.toUpperCase() == 'VERIFICATION_REQUIRED') {
+        final body = decoded['body'];
+        if (body is Map) {
+          final s2 = (body['status'] ?? body['Status'] ?? '').toString();
+          if (s2.toUpperCase() == 'VERIFICATION_REQUIRED') {
             return const AuthResult(codeRequired: true);
           }
-          if (bodyField['user'] is Map && bodyField['token'] is String) {
-            return AuthResult(user: _toUser(bodyField['user'] as Map, bodyField['token'] as String));
+          if (body['user'] is Map && body['token'] is String) {
+            return AuthResult(user: _toUser(body['user'] as Map, body['token'] as String));
           }
         }
       }
+
+      // Bare string with a status hint
+      if (decoded is String && decoded.toUpperCase().contains('VERIFICATION_REQUIRED')) {
+        return const AuthResult(codeRequired: true);
+      }
+
+      // Fallback: treat unrecognized 2xx as verification required
+      return const AuthResult(codeRequired: true);
     }
 
-    // Error paths: surface backend message if available
     throw Exception('Registration failed: ${resp.statusCode} ${resp.body}');
   }
 
+  // ---------- Login ----------
   Future<AuthResult> login({
     required String username,
     required String password,
     required String deviceId,
   }) async {
     final resp = await http.post(
-      _u('/login'), headers: _headers,
+      _u('/login'),
+      headers: _headers,
       body: jsonEncode({'username': username, 'password': password, 'deviceId': deviceId}),
     );
     final decoded = _unwrap(resp);
 
+    // 202 => code required (email code sent)
     if (resp.statusCode == 202) {
       return const AuthResult(codeRequired: true);
     }
-    if (resp.statusCode >= 200 && resp.statusCode < 300 && decoded is Map) {
-      if (decoded['user'] is Map && decoded['token'] is String) {
+
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      // Immediate success case: { user, token }
+      if (decoded is Map && decoded['user'] is Map && decoded['token'] is String) {
         return AuthResult(user: _toUser(decoded['user'] as Map, decoded['token'] as String));
       }
+
+      // Some stacks return 2xx + status text (be liberal)
+      if (decoded is Map) {
+        final status = (decoded['status'] ?? decoded['Status'] ?? '').toString().toUpperCase();
+        if (status.contains('CODE') || status.contains('VERIFICATION')) {
+          return const AuthResult(codeRequired: true);
+        }
+        final body = decoded['body'];
+        if (body is Map) {
+          final s2 = (body['status'] ?? body['Status'] ?? '').toString().toUpperCase();
+          if (s2.contains('CODE') || s2.contains('VERIFICATION')) {
+            return const AuthResult(codeRequired: true);
+          }
+          if (body['user'] is Map && body['token'] is String) {
+            return AuthResult(user: _toUser(body['user'] as Map, body['token'] as String));
+          }
+        }
+      }
+
+      if (decoded is String) {
+        final up = decoded.toUpperCase();
+        if (up.contains('CODE') || up.contains('VERIFICATION')) {
+          return const AuthResult(codeRequired: true);
+        }
+      }
+
+      // As a last resort: if it’s 2xx but no token, assume verification needed
+      return const AuthResult(codeRequired: true);
     }
+
     throw Exception('Login failed: ${resp.statusCode} ${resp.body}');
   }
 
+  // ---------- Verify (register/login) ----------
   Future<User> verifyCode({
     required String username,
     required String code,
@@ -121,9 +179,11 @@ Future<AuthResult> register({
     String purpose = 'login',
   }) async {
     final resp = await http.post(
-      _u('/verify'), headers: _headers,
+      _u('/verify'),
+      headers: _headers,
       body: jsonEncode({'username': username, 'code': code, 'deviceId': deviceId, 'purpose': purpose}),
     );
+    print('verify status=${resp.statusCode} body=${resp.body}');
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw Exception('Verify failed: ${resp.statusCode} ${resp.body}');
     }
@@ -134,19 +194,46 @@ Future<AuthResult> register({
     throw Exception('Unexpected verify response');
   }
 
+  // ---------- Resend code ----------
   Future<void> resendCode(String username, {String purpose = 'login'}) async {
     final resp = await http.post(
-      _u('/resend'), headers: _headers,
+      _u('/resend'),
+      headers: _headers,
       body: jsonEncode({'username': username, 'purpose': purpose}),
     );
-    if (resp.statusCode != 202) {
-      throw Exception('Resend failed: ${resp.statusCode} ${resp.body}');
+
+    // Accept any 2xx
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final decoded = _unwrap(resp);
+
+      // Bubble up server-declared errors if present
+      if (decoded is Map && decoded['error'] is String) {
+        throw Exception('Resend failed: ${decoded['error']}');
+      }
+
+      // Our Lambda returns delivery: "SENT" | "FAILED_TO_SEND"
+      if (decoded is Map && decoded['delivery'] == 'FAILED_TO_SEND') {
+        throw Exception("We couldn't email the code right now. Please try again.");
+      }
+
+      return; // success
     }
+
+    // Helpful hint for common API Gateway mis-route
+    if (resp.statusCode == 403 && resp.body.contains('Missing Authentication Token')) {
+      throw Exception(
+        'Resend failed: API path not found. Check baseUrl (must include the stage) and the /resend route.'
+      );
+    }
+
+    throw Exception('Resend failed: ${resp.statusCode} ${resp.body}');
   }
-  
+
+  // ---------- Forgot / Reset password ----------
   Future<void> startPasswordReset(String username) async {
     final resp = await http.post(
-      _u('/forgot'), headers: _headers,
+      _u('/forgot'),
+      headers: _headers,
       body: jsonEncode({'username': username}),
     );
     if (resp.statusCode != 202) {
@@ -161,7 +248,8 @@ Future<AuthResult> register({
     String? deviceId,
   }) async {
     final resp = await http.post(
-      _u('/reset'), headers: _headers,
+      _u('/reset'),
+      headers: _headers,
       body: jsonEncode({
         'username': username,
         'code': code,
