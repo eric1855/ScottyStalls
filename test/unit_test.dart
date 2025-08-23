@@ -5,6 +5,7 @@
 // https://flutter.dev/to/unit-testing
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:toilet_app/src/models/review.dart'; // ignore: unused_import
 
 void main() {
   group('Plus Operator', () {
