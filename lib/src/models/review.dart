@@ -38,17 +38,24 @@ class Review {
   /// backend returns timestamps as ISO8601 strings, which are parsed into
   /// DateTime instances.
   factory Review.fromJson(Map<String, dynamic> json) {
+    int _toInt(dynamic v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v) ?? 0;
+      return 0;
+    }
+
     return Review(
-      id: json['id'] as String,
-      restroomId: json['restroomId'] as String,
-      userId: json['userId'] as String,
-      username: json['username'] as String,
-      generalCleanliness: json['generalCleanliness'] as int,
-      generalNoise: json['generalNoise'] as int,
-      generalShittable: json['generalShittable'] as int,
-      sinkCleanliness: json['sinkCleanliness'] as int,
-      sinkNoise: json['sinkNoise'] as int,
-      sinkShittable: json['sinkShittable'] as int,
+      id: json['id']?.toString() ?? '',
+      restroomId: json['restroomId']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      generalCleanliness: _toInt(json['generalCleanliness']),
+      generalNoise: _toInt(json['generalNoise']),
+      generalShittable: _toInt(json['generalShittable']),
+      sinkCleanliness: _toInt(json['sinkCleanliness']),
+      sinkNoise: _toInt(json['sinkNoise']),
+      sinkShittable: _toInt(json['sinkShittable']),
       comment: json['comment'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
