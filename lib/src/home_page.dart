@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:latlong2/latlong.dart';
@@ -33,16 +37,13 @@ class _HomePageState extends State<HomePage> {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
   bool _useMyLocation = true;
+  final BaseCacheManager _cacheManager = DefaultCacheManager();
 
   // Remove the hardcoded _myLocation since we'll get it from the provider
 
   @override
   void initState() {
     super.initState();
-    // Initialize offline tile cache and location provider
-    FlutterMapTileCaching.initialise().then((_) {
-      FMTC.instance('carto').manage.create();
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<LocationProvider>().initialize();
@@ -65,10 +66,17 @@ class _HomePageState extends State<HomePage> {
       LatLng(40.4370, -79.9680),
       LatLng(40.4490, -79.9560),
     );
-    await FMTC
-        .instance('carto')
-        .download
-        .downloadRegion(bounds, minZoom: 14, maxZoom: 18);
+    for (var z = 14; z <= 18; z++) {
+      final nw = _latLngToTile(bounds.northWest, z);
+      final se = _latLngToTile(bounds.southEast, z);
+      for (var x = nw.x; x <= se.x; x++) {
+        for (var y = se.y; y <= nw.y; y++) {
+          final url =
+              'https://a.basemaps.cartocdn.com/light_all/$z/$x/$y.png';
+          await _cacheManager.downloadFile(url, force: true);
+        }
+      }
+    }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Map downloaded for offline use')),
@@ -166,7 +174,7 @@ class _HomePageState extends State<HomePage> {
                       'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.example.toilet_app',
-                  tileProvider: FMTC.instance('carto').getTileProvider(),
+                  tileProvider: CachedTileProvider(_cacheManager),
                 ),
                 // Highlight the buildings that contain restrooms.
                 if (buildingHighlights.isNotEmpty)
@@ -570,4 +578,30 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+/// Simple tile provider that reads tiles from a shared [BaseCacheManager].
+class CachedTileProvider extends TileProvider {
+  CachedTileProvider(this.cache);
+
+  final BaseCacheManager cache;
+
+  @override
+  ImageProvider getImage(TileCoordinates coords, TileLayer options) {
+    final url = getTileUrl(coords, options);
+    return CachedNetworkImageProvider(url, cacheManager: cache);
+  }
+}
+
+/// Converts a [LatLng] coordinate to slippy map tile coordinates at [zoom].
+math.Point<int> _latLngToTile(LatLng latLng, int zoom) {
+  final x = ((latLng.longitude + 180) / 360 * math.pow(2, zoom)).floor();
+  final y = ((1 -
+              math.log(
+                    math.tan(latLng.latitude * math.pi / 180) +
+                        1 / math.cos(latLng.latitude * math.pi / 180)) /
+                math.pi) /
+          2 *
+          math.pow(2, zoom))
+      .floor();
+  return math.Point<int>(x, y);
 }
