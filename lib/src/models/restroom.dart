@@ -12,6 +12,11 @@ class Restroom {
   final double longitude;
   final double generalRating;
   final double sinkRating;
+  final int floor;
+  final String description;
+  final String imageUrl;
+  final double mapX;
+  final double mapY;
 
   const Restroom({
     required this.id,
@@ -21,6 +26,11 @@ class Restroom {
     required this.longitude,
     this.generalRating = 4.5,
     this.sinkRating = 4.0,
+    this.floor = 1,
+    this.description = '',
+    this.imageUrl = '',
+    this.mapX = 0.5,
+    this.mapY = 0.5,
   });
 
   // Robust JSON parser: handles num or String for numbers/ids
@@ -39,16 +49,26 @@ class Restroom {
       longitude: _toDouble(json['longitude']),
       generalRating: _toDouble(json['generalRating']),
       sinkRating: _toDouble(json['sinkRating']),
+      floor: int.tryParse(json['floor']?.toString() ?? '') ?? 1,
+      description: (json['description'] ?? '') as String,
+      imageUrl: (json['imageUrl'] ?? '') as String,
+      mapX: _toDouble(json['mapX']),
+      mapY: _toDouble(json['mapY']),
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'building': building,
-    'latitude': latitude,
-    'longitude': longitude,
-    'generalRating': generalRating,
-    'sinkRating': sinkRating,
-  };
+        'id': id,
+        'name': name,
+        'building': building,
+        'latitude': latitude,
+        'longitude': longitude,
+        'generalRating': generalRating,
+        'sinkRating': sinkRating,
+        'floor': floor,
+        'description': description,
+        'imageUrl': imageUrl,
+        'mapX': mapX,
+        'mapY': mapY,
+      };
 }
