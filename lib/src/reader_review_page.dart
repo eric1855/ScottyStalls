@@ -38,7 +38,8 @@ class _ReaderReviewPageState extends State<ReaderReviewPage> {
     // Retrieve the base URL from the AuthProvider's constructor via reflection. Since it's
     // not exposed, we assume the same base URL used in AuthProvider. In practice you
     // should share the API base URL through a central config.
-    const String apiBaseUrl = 'https://your-api-id.execute-api.your-region.amazonaws.com/prod';
+    const String apiBaseUrl =
+        'https://your-api-id.execute-api.your-region.amazonaws.com/prod';
     _apiService = ApiService(baseUrl: apiBaseUrl, token: auth.user.token);
     _fetchReviews();
   }
@@ -66,11 +67,15 @@ class _ReaderReviewPageState extends State<ReaderReviewPage> {
   }
 
   double _averageGeneralRating(Review review) {
-    return (review.generalCleanliness + review.generalNoise + review.generalShittable) / 3.0;
+    return (review.generalCleanliness +
+            review.generalNoise +
+            review.generalShittable) /
+        3.0;
   }
 
   double _averageSinkRating(Review review) {
-    return (review.sinkCleanliness + review.sinkNoise + review.sinkShittable) / 3.0;
+    return (review.sinkCleanliness + review.sinkNoise + review.sinkShittable) /
+        3.0;
   }
 
   void _showReviewDetails(Review review) {
@@ -210,12 +215,49 @@ class _ReaderReviewPageState extends State<ReaderReviewPage> {
     );
   }
 
+  Widget _buildRestroomHeader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (widget.restroom.imageUrl.isNotEmpty)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(widget.restroom.imageUrl),
+          ),
+        if (widget.restroom.description.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text(
+              widget.restroom.description,
+              style: GoogleFonts.inter(
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF374151),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   String _formatDate(DateTime date) {
     // Format the date as e.g. Aug 19, 2025. This could be more sophisticated
     // using intl package; however for simplicity we manually compose a string.
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     final month = months[date.month - 1];
     return '$month ${date.day}, ${date.year}';
@@ -239,9 +281,17 @@ class _ReaderReviewPageState extends State<ReaderReviewPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Only allow authenticated users to submit reviews; guests are asked to
-          // register. We navigate to ReviewPage regardless; if the user is a
-          // guest the ReviewPage will show an error upon submission.
+          // Only allow authenticated users to submit reviews. Guests are
+          // prompted to sign in instead of navigating to the review form.
+          final auth = context.read<AuthProvider>();
+          if (auth.user.isGuest) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please sign in to write a review'),
+              ),
+            );
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -264,24 +314,32 @@ class _ReaderReviewPageState extends State<ReaderReviewPage> {
                   ),
                 )
               : _reviews.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No reviews yet. Be the first to leave one!',
-                        style: GoogleFonts.inter(
-                          textStyle: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF6B7280),
+                  ? ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        _buildRestroomHeader(),
+                        const SizedBox(height: 24),
+                        Center(
+                          child: Text(
+                            'No reviews yet. Be the first to leave one!',
+                            style: GoogleFonts.inter(
+                              textStyle: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
-                      itemCount: _reviews.length,
+                      itemCount: _reviews.length + 1,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
-                        final review = _reviews[index];
+                        if (index == 0) return _buildRestroomHeader();
+                        final review = _reviews[index - 1];
                         final avgGeneral = _averageGeneralRating(review);
                         final avgSink = _averageSinkRating(review);
                         return InkWell(

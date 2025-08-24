@@ -26,7 +26,8 @@ class ApiService {
     }
     final response = await http.get(uri, headers: headers);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('GET $path failed: ${response.statusCode} ${response.body}');
+      throw Exception(
+          'GET $path failed: ${response.statusCode} ${response.body}');
     }
     return response;
   }
@@ -47,7 +48,8 @@ class ApiService {
       body: jsonEncode(body),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw Exception('POST $path failed: ${response.statusCode} ${response.body}');
+      throw Exception(
+          'POST $path failed: ${response.statusCode} ${response.body}');
     }
     return response;
   }
@@ -59,17 +61,9 @@ class ApiService {
   Future<List<Restroom>> fetchRestrooms() async {
     final response = await _get('/restrooms');
     final data = jsonDecode(response.body) as List<dynamic>;
-    return data.map((e) {
-      return Restroom(
-        id: e['id'] as String,
-        name: e['name'] as String,
-        building: e['building'] as String,
-        latitude: (e['latitude'] as num).toDouble(),
-        longitude: (e['longitude'] as num).toDouble(),
-        generalRating: (e['generalRating'] as num).toDouble(),
-        sinkRating: (e['sinkRating'] as num).toDouble(),
-      );
-    }).toList();
+    return data
+        .map((e) => Restroom.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Fetches all reviews for a given restroom. The backend returns an array
