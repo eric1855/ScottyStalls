@@ -11,6 +11,9 @@ class User {
   final String email;
   final bool isGuest;
   final String token;
+  final int poopCount;
+  final int poopStreak;
+  final double poopMapDistance;
 
   const User({
     required this.id,
@@ -18,6 +21,9 @@ class User {
     required this.email,
     required this.isGuest,
     required this.token,
+    this.poopCount = 0,
+    this.poopStreak = 0,
+    this.poopMapDistance = 0,
   });
 
   /// Creates a guest user with no identifier. No token is attached because
@@ -29,6 +35,9 @@ class User {
       email: '',
       isGuest: true,
       token: '',
+      poopCount: 0,
+      poopStreak: 0,
+      poopMapDistance: 0,
     );
   }
 }
