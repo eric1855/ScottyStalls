@@ -81,6 +81,17 @@ class ProfilePage extends StatelessWidget {
                 ),
               ),
             ],
+            if (!user.isGuest) ...[
+              const SizedBox(height: 24),
+              _StatRow(label: 'PoopCounter', value: user.poopCount.toString()),
+              const SizedBox(height: 8),
+              _StatRow(label: 'PoopStreak', value: '${user.poopStreak} days'),
+              const SizedBox(height: 8),
+              _StatRow(
+                label: 'PoopMap Distance',
+                value: '${user.poopMapDistance.toStringAsFixed(1)} m',
+              ),
+            ],
             const Spacer(),
             ElevatedButton(
               onPressed: () {
@@ -101,6 +112,40 @@ class ProfilePage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StatRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _StatRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

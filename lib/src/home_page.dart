@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +14,7 @@ import 'package:provider/provider.dart';
 import 'providers/restroom_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/location_provider.dart';
+import 'building_map_page.dart';
 
 /// The home screen of the restroom reviewer app.
 ///
@@ -23,8 +28,6 @@ class HomePage extends StatefulWidget {
 
   static const String routeName = '/home';
 
-  
-
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -33,13 +36,13 @@ class _HomePageState extends State<HomePage> {
   final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
   bool _useMyLocation = true;
+  final BaseCacheManager _cacheManager = DefaultCacheManager();
 
   // Remove the hardcoded _myLocation since we'll get it from the provider
 
   @override
   void initState() {
     super.initState();
-    // Initialize location provider
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<LocationProvider>().initialize();
@@ -50,8 +53,32 @@ class _HomePageState extends State<HomePage> {
 
   void _centerOnUser() {
     final locationProvider = context.read<LocationProvider>();
-    if (locationProvider.hasPermission && locationProvider.currentLocation != null) {
+    if (locationProvider.hasPermission &&
+        locationProvider.currentLocation != null) {
       _mapController.move(locationProvider.currentLocation!, 16);
+    }
+  }
+
+  Future<void> _downloadMap() async {
+    // Download a region around campus for offline use
+    final bounds = LatLngBounds(
+      LatLng(40.4370, -79.9680),
+      LatLng(40.4490, -79.9560),
+    );
+    for (var z = 14; z <= 18; z++) {
+      final nw = _latLngToTile(bounds.northWest, z);
+      final se = _latLngToTile(bounds.southEast, z);
+      for (var x = nw.x; x <= se.x; x++) {
+        for (var y = se.y; y <= nw.y; y++) {
+          final url = 'https://a.basemaps.cartocdn.com/light_all/$z/$x/$y.png';
+          await _cacheManager.downloadFile(url, force: true);
+        }
+      }
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Map downloaded for offline use')),
+      );
     }
   }
 
@@ -60,12 +87,57 @@ class _HomePageState extends State<HomePage> {
     final theme = Theme.of(context);
     final restroomProvider = context.watch<RestroomProvider>();
     final locationProvider = context.watch<LocationProvider>();
-    
+
     // Get current user location from provider
-    final userLocation = locationProvider.currentLocation ?? 
+    final userLocation = locationProvider.currentLocation ??
         LatLng(40.4440, -79.9600); // Fallback location
-    
+
     final restrooms = restroomProvider.restrooms;
+    // Group restrooms by building to create highlight overlays. Each building's
+    // centroid is computed from its restrooms' coordinates and rendered as a
+    // subtle translucent circle on the map. We also attach transparent markers
+    // at the same centroids to allow tapping a building to view its floors.
+    final Map<String, List<Restroom>> _byBuilding = {};
+    for (final r in restrooms) {
+      _byBuilding.putIfAbsent(r.building, () => []).add(r);
+    }
+    final Map<String, LatLng> _buildingCenters = {};
+    final buildingHighlights = _byBuilding.entries.map((entry) {
+      final list = entry.value;
+      final lat =
+          list.map((r) => r.latitude).reduce((a, b) => a + b) / list.length;
+      final lon =
+          list.map((r) => r.longitude).reduce((a, b) => a + b) / list.length;
+      final center = LatLng(lat, lon);
+      _buildingCenters[entry.key] = center;
+      return CircleMarker(
+        point: center,
+        radius: 50,
+        color: theme.colorScheme.primary.withOpacity(0.2),
+        borderStrokeWidth: 0,
+      );
+    }).toList();
+    final buildingTapMarkers = _buildingCenters.entries.map((e) {
+      return Marker(
+        width: 80,
+        height: 80,
+        point: e.value,
+        builder: (ctx) => GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BuildingMapPage(
+                  building: e.key,
+                  restrooms: _byBuilding[e.key]!,
+                ),
+              ),
+            );
+          },
+          child: Container(color: Colors.transparent),
+        ),
+      );
+    }).toList();
     final query = _searchController.text.toLowerCase();
     final List<Restroom> visibleRestrooms = query.isEmpty
         ? restrooms
@@ -82,56 +154,79 @@ class _HomePageState extends State<HomePage> {
           children: [
             // Map view
             SizedBox.expand(
-              child: FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  center: userLocation,
-                  zoom: 16.0,
-                  maxZoom: 18.0,
-                  minZoom: 14.0,
+                child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                center: userLocation,
+                zoom: 16.0,
+                maxZoom: 18.0,
+                minZoom: 14.0,
+              ),
+              children: [
+                // Use a cleaner basemap similar to the default Google Maps
+                // appearance. CartoDB's "light_all" style provides a subtle
+                // grayscale map that keeps the focus on our markers without
+                // requiring any API keys.
+                TileLayer(
+                  urlTemplate:
+                      'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'com.example.toilet_app',
+                  tileProvider: CachedTileProvider(_cacheManager),
                 ),
-                children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.toilet_app',
-                  ),
-                  // User location marker (blue dot)
-                  if (locationProvider.hasPermission && locationProvider.currentLocation != null)
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          width: 24,
-                          height: 24,
-                          point: locationProvider.currentLocation!,
-                          builder: (ctx) => _buildUserLocationMarker(),
-                        ),
-                      ],
-                    ),
-                  // Restroom markers
+                // Highlight the buildings that contain restrooms.
+                if (buildingHighlights.isNotEmpty)
+                  CircleLayer(circles: buildingHighlights),
+                if (buildingTapMarkers.isNotEmpty)
+                  MarkerLayer(markers: buildingTapMarkers),
+                // User location marker (blue dot)
+                if (locationProvider.hasPermission &&
+                    locationProvider.currentLocation != null)
                   MarkerLayer(
-                    markers: visibleRestrooms
-                        .map(
-                          (r) => Marker(
-                            width: 36,
-                            height: 36,
-                            point: LatLng(r.latitude, r.longitude),
-                            builder: (ctx) => _buildRatingMarker(
-                                context, r.generalRating),
-                          ),
-                        )
-                        .toList(),
+                    markers: [
+                      Marker(
+                        width: 24,
+                        height: 24,
+                        point: locationProvider.currentLocation!,
+                        builder: (ctx) => _buildUserLocationMarker(),
+                      ),
+                    ],
                   ),
-                ],
-              )
-            ),
+                // Restroom markers
+                MarkerLayer(
+                  markers: visibleRestrooms
+                      .map(
+                        (r) => Marker(
+                          width: 36,
+                          height: 36,
+                          point: LatLng(r.latitude, r.longitude),
+                          builder: (ctx) =>
+                              _buildRatingMarker(context, r.generalRating),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            )),
 
             // Loading overlay: show when restrooms are being fetched
             if (restroomProvider.isLoading)
               const Center(
                 child: CircularProgressIndicator(),
               ),
-            
+
+            // Offline map download button
+            Positioned(
+              top: 16,
+              right: 16,
+              child: FloatingActionButton(
+                heroTag: 'download',
+                mini: true,
+                onPressed: _downloadMap,
+                child: const Icon(Icons.download),
+              ),
+            ),
+
             // Location permission banner
             if (!locationProvider.hasPermission && !locationProvider.isLoading)
               Positioned(
@@ -173,7 +268,9 @@ class _HomePageState extends State<HomePage> {
 
             // Top area with search bar and location toggle
             Positioned(
-              top: locationProvider.hasPermission ? 12 : 80, // Adjust position if banner is shown
+              top: locationProvider.hasPermission
+                  ? 12
+                  : 80, // Adjust position if banner is shown
               left: 16,
               right: 16,
               child: Column(
@@ -225,7 +322,9 @@ class _HomePageState extends State<HomePage> {
                               radius: 20,
                               backgroundColor: Colors.white,
                               child: Icon(
-                                auth.user.isGuest ? Icons.person_outline : Icons.person,
+                                auth.user.isGuest
+                                    ? Icons.person_outline
+                                    : Icons.person,
                                 color: theme.colorScheme.primary,
                               ),
                             ),
@@ -351,8 +450,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Builds the bottom sheet listing all visible restrooms.
-  Widget _buildBottomSheet(
-      BuildContext context, List<Restroom> visibleRestrooms, LatLng userLocation) {
+  Widget _buildBottomSheet(BuildContext context,
+      List<Restroom> visibleRestrooms, LatLng userLocation) {
     final theme = Theme.of(context);
     return Container(
       decoration: const BoxDecoration(
@@ -477,4 +576,30 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+/// Simple tile provider that reads tiles from a shared [BaseCacheManager].
+class CachedTileProvider extends TileProvider {
+  CachedTileProvider(this.cache);
+
+  final BaseCacheManager cache;
+
+  @override
+  ImageProvider getImage(TileCoordinates coords, TileLayer options) {
+    final url = getTileUrl(coords, options);
+    return CachedNetworkImageProvider(url, cacheManager: cache);
+  }
+}
+
+/// Converts a [LatLng] coordinate to slippy map tile coordinates at [zoom].
+math.Point<int> _latLngToTile(LatLng latLng, int zoom) {
+  final x = ((latLng.longitude + 180) / 360 * math.pow(2, zoom)).floor();
+  final y = ((1 -
+              math.log(math.tan(latLng.latitude * math.pi / 180) +
+                      1 / math.cos(latLng.latitude * math.pi / 180)) /
+                  math.pi) /
+          2 *
+          math.pow(2, zoom))
+      .floor();
+  return math.Point<int>(x, y);
 }
