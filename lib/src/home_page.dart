@@ -71,8 +71,7 @@ class _HomePageState extends State<HomePage> {
       final se = _latLngToTile(bounds.southEast, z);
       for (var x = nw.x; x <= se.x; x++) {
         for (var y = se.y; y <= nw.y; y++) {
-          final url =
-              'https://a.basemaps.cartocdn.com/light_all/$z/$x/$y.png';
+          final url = 'https://a.basemaps.cartocdn.com/light_all/$z/$x/$y.png';
           await _cacheManager.downloadFile(url, force: true);
         }
       }
@@ -596,10 +595,9 @@ class CachedTileProvider extends TileProvider {
 math.Point<int> _latLngToTile(LatLng latLng, int zoom) {
   final x = ((latLng.longitude + 180) / 360 * math.pow(2, zoom)).floor();
   final y = ((1 -
-              math.log(
-                    math.tan(latLng.latitude * math.pi / 180) +
-                        1 / math.cos(latLng.latitude * math.pi / 180)) /
-                math.pi) /
+              math.log(math.tan(latLng.latitude * math.pi / 180) +
+                      1 / math.cos(latLng.latitude * math.pi / 180)) /
+                  math.pi) /
           2 *
           math.pow(2, zoom))
       .floor();
