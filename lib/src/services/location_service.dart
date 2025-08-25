@@ -1,5 +1,4 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:latlong2/latlong.dart';
 
 /// Service for handling location-related operations including permissions
