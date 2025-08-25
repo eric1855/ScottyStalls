@@ -17,6 +17,8 @@ their own.
   selection from a dropdown.
 * **Offline support** through tile caching, enabling navigation without an
   internet connection.
+* **Downloadable tiles**: tap the download button on the home page to cache
+  the campus map for offline use.
 * **Rich restroom pages** with images, descriptions, and star-rated reviews.
 * **User profile stats** including PoopCounter, PoopStreak, and PoopMap distance.
 
