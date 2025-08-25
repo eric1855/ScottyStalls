@@ -43,8 +43,9 @@ class LocationService {
         return null;
       }
 
+      // Request the most accurate position available within 10 seconds.
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.best,
         timeLimit: const Duration(seconds: 10),
       );
 
@@ -58,13 +59,16 @@ class LocationService {
   /// Start listening to location updates.
   /// Returns a stream of position updates.
   Stream<LatLng> getLocationStream() {
+    // Use the highest accuracy and a tighter distance filter so updates are
+    // reported more precisely.
     const LocationSettings locationSettings = LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // Update every 10 meters
+      accuracy: LocationAccuracy.best,
+      distanceFilter: 5, // Update every 5 meters
     );
 
-    return Geolocator.getPositionStream(locationSettings: locationSettings)
-        .map((Position position) => LatLng(position.latitude, position.longitude));
+    return Geolocator.getPositionStream(
+      locationSettings: locationSettings,
+    ).map((Position position) => LatLng(position.latitude, position.longitude));
   }
 
   /// Check if location services are enabled.
