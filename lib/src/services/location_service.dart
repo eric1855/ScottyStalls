@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -61,17 +63,19 @@ class LocationService {
 
   /// Start listening to location updates.
   /// Returns a stream of position updates.
-  Stream<LatLng> getLocationStream() {
-    // Use the highest accuracy and a tighter distance filter so updates are
-    // reported more precisely.
-    const LocationSettings locationSettings = LocationSettings(
+  Stream<LatLng> getLocationStream({
+    Duration interval = const Duration(seconds: 2),
+  }) {
+    const LocationSettings settings = LocationSettings(
       accuracy: LocationAccuracy.best,
-      distanceFilter: 5, // Update every 5 meters
+      timeLimit: Duration(seconds: 10),
     );
 
-    return Geolocator.getPositionStream(
-      locationSettings: locationSettings,
-    ).map((Position position) => LatLng(position.latitude, position.longitude));
+    return Stream.periodic(interval)
+        .asyncMap((_) => Geolocator.getCurrentPosition(
+              locationSettings: settings,
+            ))
+        .map((Position position) => LatLng(position.latitude, position.longitude));
   }
 
   /// Check if location services are enabled.
