@@ -44,10 +44,13 @@ class LocationService {
       }
 
       // Request the most accurate position available within 10 seconds.
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-        timeLimit: const Duration(seconds: 10),
+      const LocationSettings settings = LocationSettings(
+        accuracy: LocationAccuracy.best,
+        timeLimit: Duration(seconds: 10),
       );
+
+      final Position position =
+          await Geolocator.getCurrentPosition(locationSettings: settings);
 
       return LatLng(position.latitude, position.longitude);
     } catch (e) {
