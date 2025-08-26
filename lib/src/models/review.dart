@@ -52,10 +52,13 @@ class Review {
       username: json['username']?.toString() ?? '',
       generalCleanliness: _toInt(json['generalCleanliness']),
       generalNoise: _toInt(json['generalNoise']),
-      generalShittable: _toInt(json['generalShittable']),
+      // The backend uses the shorter key "generalShit"; fall back to the
+      // older "generalShittable" for compatibility.
+      generalShittable: _toInt(json['generalShit'] ?? json['generalShittable']),
       sinkCleanliness: _toInt(json['sinkCleanliness']),
       sinkNoise: _toInt(json['sinkNoise']),
-      sinkShittable: _toInt(json['sinkShittable']),
+      // Likewise handle both "sinkShit" and the legacy "sinkShittable".
+      sinkShittable: _toInt(json['sinkShit'] ?? json['sinkShittable']),
       comment: json['comment'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
