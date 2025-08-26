@@ -27,7 +27,8 @@ class ApiService {
     final response = await http.get(uri, headers: headers);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
-          'GET $path failed: ${response.statusCode} ${response.body}');
+        'GET $path failed: ${response.statusCode} ${response.body}',
+      );
     }
     return response;
   }
@@ -49,7 +50,8 @@ class ApiService {
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
-          'POST $path failed: ${response.statusCode} ${response.body}');
+        'POST $path failed: ${response.statusCode} ${response.body}',
+      );
     }
     return response;
   }
@@ -83,19 +85,22 @@ class ApiService {
     required String restroomId,
     required int generalCleanliness,
     required int generalNoise,
-    required int generalShittable,
+    required int generalShit,
     required int sinkCleanliness,
     required int sinkNoise,
-    required int sinkShittable,
+    required int sinkShit,
     String? comment,
   }) async {
     await _post('/restrooms/$restroomId/reviews', {
       'generalCleanliness': generalCleanliness,
       'generalNoise': generalNoise,
-      'generalShittable': generalShittable,
+      // Backend expects "generalShit" rather than the more verbose
+      // "generalShittable" used throughout the app.
+      'generalShit': generalShit,
       'sinkCleanliness': sinkCleanliness,
       'sinkNoise': sinkNoise,
-      'sinkShittable': sinkShittable,
+      // Likewise, the sink rating uses the key "sinkShit".
+      'sinkShit': sinkShit,
       'comment': comment ?? '',
     });
   }

@@ -22,10 +22,11 @@ void main() {
       'username': 'alice',
       'generalCleanliness': '5',
       'generalNoise': 4,
-      'generalShittable': '3',
+      // Backend now uses the shorter key names for these ratings.
+      'generalShit': '3',
       'sinkCleanliness': '2',
       'sinkNoise': '1',
-      'sinkShittable': 5.0,
+      'sinkShit': 5.0,
       'comment': 'ok',
       'createdAt': '2020-01-01T00:00:00Z',
     };
