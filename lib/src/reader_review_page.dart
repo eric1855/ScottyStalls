@@ -39,7 +39,7 @@ class _ReaderReviewPageState extends State<ReaderReviewPage> {
     // not exposed, we assume the same base URL used in AuthProvider. In practice you
     // should share the API base URL through a central config.
     const String apiBaseUrl =
-        'https://your-api-id.execute-api.your-region.amazonaws.com/prod';
+        'https://atq65hnu62.execute-api.us-east-1.amazonaws.com/first';
     _apiService = ApiService(baseUrl: apiBaseUrl, token: auth.user.token);
     _fetchReviews();
   }

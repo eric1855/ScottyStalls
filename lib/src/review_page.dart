@@ -59,7 +59,7 @@ class _ReviewPageState extends State<ReviewPage> {
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
-    const String apiBaseUrl = 'https://your-api-id.execute-api.your-region.amazonaws.com/prod';
+    const String apiBaseUrl = 'https://atq65hnu62.execute-api.us-east-1.amazonaws.com/first';
     final api = ApiService(baseUrl: apiBaseUrl, token: auth.user.token);
     api
         .submitReview(
