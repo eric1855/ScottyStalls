@@ -63,27 +63,30 @@ class _ReviewPageState extends State<ReviewPage> {
     final api = ApiService(baseUrl: apiBaseUrl, token: auth.user.token);
     api
         .submitReview(
-      restroomId: widget.restroom.id,
-      generalCleanliness: _generalCleanliness,
-      generalNoise: _generalNoise,
-      generalShittable: _generalShit,
-      sinkCleanliness: _sinkCleanliness,
-      sinkNoise: _sinkNoise,
-      sinkShittable: _sinkShit,
-      comment: _commentController.text.trim(),
-    )
+          restroomId: widget.restroom.id,
+          generalCleanliness: _generalCleanliness,
+          generalNoise: _generalNoise,
+          // Backend expects the key "generalShit" for this rating.
+          generalShit: _generalShit,
+          sinkCleanliness: _sinkCleanliness,
+          sinkNoise: _sinkNoise,
+          // Backend expects the key "sinkShit" for this rating.
+          sinkShit: _sinkShit,
+          comment: _commentController.text.trim(),
+        )
         .then((_) {
-      Navigator.of(context).pop(); // dismiss loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Review submitted! Thank you.')),
-      );
-      Navigator.of(context).pop();
-    }).catchError((error) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error submitting review: $error')),
-      );
-    });
+          Navigator.of(context).pop(); // dismiss loading dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Review submitted! Thank you.')),
+          );
+          Navigator.of(context).pop();
+        })
+        .catchError((error) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error submitting review: $error')),
+          );
+        });
   }
 
   @override
