@@ -297,6 +297,15 @@ class _HomePageState extends State<HomePage> {
                             onChanged: (val) => setState(() {}),
                             decoration: InputDecoration(
                               prefixIcon: const Icon(Icons.search),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 20),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {});
+                                      },
+                                    )
+                                  : null,
                               hintText: 'Search buildings, restrooms',
                               border: InputBorder.none,
                               contentPadding: const EdgeInsets.symmetric(
@@ -391,7 +400,7 @@ class _HomePageState extends State<HomePage> {
               bottom: 0,
               left: 0,
               right: 0,
-              child: _buildBottomSheet(context, visibleRestrooms, userLocation),
+              child: _buildBottomSheet(context, visibleRestrooms, userLocation, query),
             ),
           ],
         ),
@@ -451,7 +460,7 @@ class _HomePageState extends State<HomePage> {
 
   /// Builds the bottom sheet listing all visible restrooms.
   Widget _buildBottomSheet(BuildContext context,
-      List<Restroom> visibleRestrooms, LatLng userLocation) {
+      List<Restroom> visibleRestrooms, LatLng userLocation, String query) {
     final theme = Theme.of(context);
     return Container(
       decoration: const BoxDecoration(
@@ -483,7 +492,21 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(
             height: 220,
-            child: ListView.builder(
+            child: visibleRestrooms.isEmpty
+                ? Center(
+                    child: Text(
+                      query.isEmpty
+                          ? 'Loading restrooms...'
+                          : 'No restrooms match "$query"',
+                      style: GoogleFonts.inter(
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView.builder(
               itemCount: visibleRestrooms.length,
               itemBuilder: (context, index) {
                 final restroom = visibleRestrooms[index];
@@ -577,6 +600,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
 /// Simple tile provider that reads tiles from a shared [BaseCacheManager].
 class CachedTileProvider extends TileProvider {
   CachedTileProvider(this.cache);
