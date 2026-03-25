@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import 'config.dart';
+import 'theme/app_theme.dart';
 import 'login_page.dart';
 import 'home_page.dart';
 import 'review_page.dart';
@@ -23,9 +24,6 @@ class MyApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: settingsController,
       builder: (BuildContext context, Widget? child) {
-        // NO trailing slash here
-        const String apiBaseUrl = 'https://atq65hnu62.execute-api.us-east-1.amazonaws.com/first';
-
         return MultiProvider(
           providers: [
             ChangeNotifierProvider<AuthProvider>(
@@ -57,15 +55,7 @@ class MyApp extends StatelessWidget {
             ],
             supportedLocales: const [Locale('en', '')],
             onGenerateTitle: (BuildContext context) => 'Restroom Finder',
-            theme: ThemeData(
-              scaffoldBackgroundColor: const Color(0xFFFAFAFA),
-              appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.white,
-                foregroundColor: Color(0xFF111827),
-                elevation: 0,
-              ),
-              textTheme: GoogleFonts.interTextTheme(),
-            ),
+            theme: AppTheme.light(),
             darkTheme: ThemeData.dark(),
             themeMode: settingsController.themeMode,
             initialRoute: LoginPage.routeName,

@@ -209,12 +209,6 @@ class _HomePageState extends State<HomePage> {
               ],
             )),
 
-            // Loading overlay: show when restrooms are being fetched
-            if (restroomProvider.isLoading)
-              const Center(
-                child: CircularProgressIndicator(),
-              ),
-
             // Offline map download button
             Positioned(
               top: 16,
@@ -431,17 +425,42 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Returns a color reflecting the quality of a rating.
+  Color _ratingColor(double rating) {
+    if (rating >= 4.0) return const Color(0xFF22C55E);
+    if (rating >= 3.0) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
+  /// Builds a row of 5 star icons (filled / half / empty) for [rating].
+  Widget _buildStarRow(double rating, {double size = 14}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) {
+        if (i < rating.floor()) {
+          return Icon(Icons.star_rounded, size: size, color: Colors.amber);
+        } else if (i < rating.ceil() && rating - rating.floor() >= 0.5) {
+          return Icon(Icons.star_half_rounded, size: size, color: Colors.amber);
+        } else {
+          return Icon(Icons.star_outline_rounded,
+              size: size, color: Colors.grey.shade300);
+        }
+      }),
+    );
+  }
+
   /// Builds a small circular marker widget displaying the restroom rating.
   Widget _buildRatingMarker(BuildContext context, double rating) {
-    final theme = Theme.of(context);
+    final color = _ratingColor(rating);
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary,
+        color: color,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 4,
+            color: color.withOpacity(0.45),
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
@@ -461,7 +480,6 @@ class _HomePageState extends State<HomePage> {
   /// Builds the bottom sheet listing all visible restrooms.
   Widget _buildBottomSheet(BuildContext context,
       List<Restroom> visibleRestrooms, LatLng userLocation, String query) {
-    final theme = Theme.of(context);
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -490,110 +508,177 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
+          // Header row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Nearby Restrooms',
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF111827),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC41230).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${visibleRestrooms.length}',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFC41230),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           SizedBox(
             height: 220,
             child: visibleRestrooms.isEmpty
                 ? Center(
-                    child: Text(
-                      query.isEmpty
-                          ? 'Loading restrooms...'
-                          : 'No restrooms match "$query"',
-                      style: GoogleFonts.inter(
-                        textStyle: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF9CA3AF),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          query.isEmpty
+                              ? Icons.hourglass_empty_rounded
+                              : Icons.search_off_rounded,
+                          size: 40,
+                          color: const Color(0xFF9CA3AF),
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        Text(
+                          query.isEmpty
+                              ? 'Loading restrooms...'
+                              : 'No restrooms match "$query"',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: const Color(0xFF9CA3AF),
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 : ListView.builder(
-              itemCount: visibleRestrooms.length,
-              itemBuilder: (context, index) {
-                final restroom = visibleRestrooms[index];
-                final distance = Distance().as(
-                  LengthUnit.Mile,
-                  userLocation, // Use actual user location instead of hardcoded
-                  LatLng(restroom.latitude, restroom.longitude),
-                );
-                return InkWell(
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      ReaderReviewPage.routeName,
-                      arguments: restroom,
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: [
-                        // Rating badge
-                        Container(
+                    itemCount: visibleRestrooms.length,
+                    itemBuilder: (context, index) {
+                      final restroom = visibleRestrooms[index];
+                      final distance = Distance().as(
+                        LengthUnit.Mile,
+                        userLocation,
+                        LatLng(restroom.latitude, restroom.longitude),
+                      );
+                      final rColor = _ratingColor(restroom.generalRating);
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            ReaderReviewPage.routeName,
+                            arguments: restroom,
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          child: Text(
-                            restroom.generalRating.toStringAsFixed(1),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(
-                                restroom.name,
-                                style: GoogleFonts.inter(
-                                  textStyle: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF111827),
+                              // Rating badge (colored by rating)
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: rColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  restroom.generalRating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      restroom.name,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF111827),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          restroom.building,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w400,
+                                            color: const Color(0xFF6B7280),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        // Floor chip
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 5, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade200,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'F${restroom.floor}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: const Color(0xFF6B7280),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    _buildStarRow(restroom.generalRating),
+                                  ],
+                                ),
+                              ),
                               Text(
-                                restroom.building,
+                                '${distance.toStringAsFixed(1)} mi',
                                 style: GoogleFonts.inter(
-                                  textStyle: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w400,
-                                    color: Color(0xFF6B7280),
-                                  ),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF6B7280),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Text(
-                          '${distance.toStringAsFixed(1)} mi',
-                          style: GoogleFonts.inter(
-                            textStyle: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),

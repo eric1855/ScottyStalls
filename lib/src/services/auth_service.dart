@@ -208,7 +208,6 @@ class AuthService {
         'purpose': purpose
       }),
     );
-    print('verify status=${resp.statusCode} body=${resp.body}');
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw Exception('Verify failed: ${resp.statusCode} ${resp.body}');
     }
