@@ -47,19 +47,19 @@ You're between classes. You need a restroom. You walk into the nearest building,
 
 ```
 ┌─────────────────────────────────────────────┐
-│                  Flutter App                 │
-│                                              │
-│  ┌──────────┐ ┌───────────┐ ┌────────────┐  │
-│  │   Auth   │ │ Restroom  │ │  Location   │  │
-│  │ Provider │ │ Provider  │ │  Provider   │  │
-│  └────┬─────┘ └─────┬─────┘ └──────┬─────┘  │
-│       │              │              │         │
-│  ┌────┴─────┐ ┌──────┴──────┐ ┌────┴──────┐ │
-│  │   Auth   │ │     API     │ │  Location  │ │
-│  │ Service  │ │   Service   │ │  Service   │ │
+│                  Flutter App                │
+│                                             │
+│  ┌──────────┐  ┌───────────┐ ┌────────────┐ │
+│  │   Auth   │  │ Restroom  │ │  Location  │ │
+│  │ Provider │  │ Provider  │ │  Provider  │ │
+│  └────┬─────┘  └─────┬─────┘ └──────┬─────┘ │
+│       │              │              │       │
+│  ┌────┴─────┐ ┌──────┴──────┐ ┌─────┴─────┐ │
+│  │   Auth   │ │     API     │ │  Location │ │
+│  │ Service  │ │   Service   │ │  Service  │ │
 │  └────┬─────┘ └──────┬──────┘ └────┬──────┘ │
-└───────┼──────────────┼──────────────┼────────┘
-        │              │              │
+└───────┼──────────────┼─────────────┼────────┘
+        │              │             │
    ┌────┴────┐   ┌─────┴─────┐  ┌────┴─────┐
    │   AWS   │   │    AWS    │  │ Device   │
    │ Lambda  │   │  Lambda   │  │   GPS    │
