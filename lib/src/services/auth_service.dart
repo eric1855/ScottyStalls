@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user.dart';
+import '../config.dart';
 
 class AuthResult {
   final User? user;
@@ -15,6 +16,7 @@ class AuthService {
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'x-api-key': apiKey,
       };
 
   Uri _u(String p) {

@@ -10,35 +10,34 @@ environment:
   sdk: ">=3.5.0 <4.0.0"
 
 dependencies:
-  mobile_scanner: ^6.0.3
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
   provider: ^6.1.5
-  google_fonts: 4.0.4
+  google_fonts: ^8.0.2
   shared_preferences: ^2.3.2
 
   # Add the http package for making REST calls to our AWS backend.
-  http: ^0.13.6
+  http: ^1.2.0
 
   # Added to render a map without requiring API keys. flutter_map uses
   # OpenStreetMap tiles and lets us plot points for each restroom.
-  flutter_map: ^4.0.0
+  flutter_map: ^8.2.2
   # Utility package for handling latitude/longitude values with flutter_map.
-  latlong2: ^0.8.1
+  latlong2: ^0.9.1
   flutter_cache_manager: ^3.3.1
   cached_network_image: ^3.3.1
 
   # Location services for live tracking
-  geolocator: ^13.0.1
-  permission_handler: ^11.3.1
+  geolocator: ^14.0.2
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

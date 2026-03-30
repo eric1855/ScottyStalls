@@ -1,8 +1,8 @@
-// lib/reset_password_page.dart
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
-import 'home_page.dart';
+import 'main_shell.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key, required this.username});
@@ -23,7 +23,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   void dispose() { _codeCtrl.dispose(); _newPwCtrl.dispose(); super.dispose(); }
 
   Future<void> _submit() async {
-    setState(()=> _loading = true);
+    setState(() => _loading = true);
     try {
       await context.read<AuthProvider>().completePasswordReset(
         username: widget.username,
@@ -31,20 +31,17 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         newPassword: _newPwCtrl.text,
       );
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const HomePage()),
-        (_) => false,
-      );
+      Navigator.of(context).pushNamedAndRemoveUntil(MainShell.routeName, (_) => false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
-      if (mounted) setState(()=> _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _resend() async {
-    setState(()=> _resending = true);
+    setState(() => _resending = true);
     try {
       await context.read<AuthProvider>().resendCode(widget.username, purpose: 'reset');
       if (!mounted) return;
@@ -53,7 +50,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
-      if (mounted) setState(()=> _resending = false);
+      if (mounted) setState(() => _resending = false);
     }
   }
 
@@ -68,31 +65,33 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             controller: _codeCtrl,
             keyboardType: TextInputType.number,
             maxLength: 6,
+            style: GoogleFonts.inter(color: Colors.white),
             decoration: const InputDecoration(labelText: '6-digit code', counterText: ''),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _newPwCtrl,
             obscureText: _obscure,
+            style: GoogleFonts.inter(color: Colors.white),
             decoration: InputDecoration(
               labelText: 'New password',
               suffixIcon: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setState(()=> _obscure = !_obscure),
+                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF666666)),
+                onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _loading ? null : _submit,
-              child: Text(_loading ? 'Resetting…' : 'Reset password'),
+              child: Text(_loading ? 'Resetting\u2026' : 'Reset password'),
             ),
           ),
           TextButton(
             onPressed: _resending ? null : _resend,
-            child: _resending ? const Text('Resending…') : const Text('Resend code'),
+            child: _resending ? const Text('Resending\u2026') : const Text('Resend code'),
           ),
         ]),
       ),

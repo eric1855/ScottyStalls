@@ -1,5 +1,5 @@
-// lib/forgot_password_page.dart
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'reset_password_page.dart';
@@ -23,18 +23,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter your username')));
       return;
     }
-    setState(()=> _loading = true);
+    setState(() => _loading = true);
     try {
       await context.read<AuthProvider>().startPasswordReset(username);
       if (!mounted) return;
       Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ResetPasswordPage(username: username),
-      ));
+        builder: (_) => ResetPasswordPage(username: username)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
-      if (mounted) setState(()=> _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -45,18 +44,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(children: [
-          const Text('Enter your username and we’ll email you a 6-digit code.'),
-          const SizedBox(height: 12),
+          Text("Enter your username and we'll email you a 6-digit code.",
+            style: GoogleFonts.inter(fontSize: 15, color: Colors.white)),
+          const SizedBox(height: 16),
           TextField(
             controller: _usernameCtrl,
+            style: GoogleFonts.inter(color: Colors.white),
             decoration: const InputDecoration(labelText: 'Username'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: _loading ? null : _submit,
-              child: Text(_loading ? 'Sending…' : 'Send code'),
+              child: Text(_loading ? 'Sending\u2026' : 'Send code'),
             ),
           ),
         ]),

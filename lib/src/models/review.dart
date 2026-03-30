@@ -52,13 +52,14 @@ class Review {
       username: json['username']?.toString() ?? '',
       generalCleanliness: _toInt(json['generalCleanliness']),
       generalNoise: _toInt(json['generalNoise']),
-      // The backend uses the shorter key "generalShit"; fall back to the
-      // older "generalShittable" for compatibility.
-      generalShittable: _toInt(json['generalShit'] ?? json['generalShittable']),
-      sinkCleanliness: _toInt(json['sinkCleanliness']),
-      sinkNoise: _toInt(json['sinkNoise']),
-      // Likewise handle both "sinkShit" and the legacy "sinkShittable".
-      sinkShittable: _toInt(json['sinkShit'] ?? json['sinkShittable']),
+      // The backend may return "generalShit", "generalShittable", or
+      // only "overall". Derive comfort from whichever is available.
+      generalShittable: _toInt(json['generalShit'] ?? json['generalShittable'] ??
+          (json['overall'] is num ? (json['overall'] as num).round() : null) ?? 0),
+      sinkCleanliness: _toInt(json['sinkCleanliness'] ?? json['generalCleanliness']),
+      sinkNoise: _toInt(json['sinkNoise'] ?? json['generalNoise']),
+      sinkShittable: _toInt(json['sinkShit'] ?? json['sinkShittable'] ??
+          (json['overall'] is num ? (json['overall'] as num).round() : null) ?? 0),
       comment: json['comment'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
     );

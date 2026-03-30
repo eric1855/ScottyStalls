@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/restroom.dart';
 import '../models/review.dart';
+import '../config.dart';
 
 /// A lightweight wrapper around the backend REST API. All methods return
 /// domain objects or throw an [Exception] on failure. You must supply the
@@ -20,7 +21,7 @@ class ApiService {
   /// successful.
   Future<http.Response> _get(String path) async {
     final uri = Uri.parse('$baseUrl$path');
-    final headers = <String, String>{'Content-Type': 'application/json'};
+    final headers = <String, String>{'Content-Type': 'application/json', 'x-api-key': apiKey};
     if (token != null && token!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
@@ -39,7 +40,7 @@ class ApiService {
   /// if the request fails.
   Future<http.Response> _post(String path, Map<String, dynamic> body) async {
     final uri = Uri.parse('$baseUrl$path');
-    final headers = <String, String>{'Content-Type': 'application/json'};
+    final headers = <String, String>{'Content-Type': 'application/json', 'x-api-key': apiKey};
     if (token != null && token!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
@@ -91,16 +92,16 @@ class ApiService {
     required int sinkShit,
     String? comment,
   }) async {
+    final overall = ((generalCleanliness + generalNoise + generalShit +
+        sinkCleanliness + sinkNoise + sinkShit) / 6.0);
     await _post('/restrooms/$restroomId/reviews', {
       'generalCleanliness': generalCleanliness,
       'generalNoise': generalNoise,
-      // Backend expects "generalShit" rather than the more verbose
-      // "generalShittable" used throughout the app.
       'generalShit': generalShit,
       'sinkCleanliness': sinkCleanliness,
       'sinkNoise': sinkNoise,
-      // Likewise, the sink rating uses the key "sinkShit".
       'sinkShit': sinkShit,
+      'overall': overall,
       'comment': comment ?? '',
     });
   }

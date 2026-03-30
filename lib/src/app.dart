@@ -5,11 +5,10 @@ import 'package:provider/provider.dart';
 import 'config.dart';
 import 'theme/app_theme.dart';
 import 'login_page.dart';
-import 'home_page.dart';
+import 'main_shell.dart';
 import 'review_page.dart';
 import 'reader_review_page.dart';
 import 'settings/settings_controller.dart';
-import 'settings/settings_view.dart';
 import 'providers/auth_provider.dart';
 import 'providers/restroom_provider.dart';
 import 'services/api_service.dart';
@@ -54,16 +53,15 @@ class MyApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: const [Locale('en', '')],
-            onGenerateTitle: (BuildContext context) => 'Restroom Finder',
+            onGenerateTitle: (BuildContext context) => 'ScottyStalls',
             theme: AppTheme.light(),
-            darkTheme: ThemeData.dark(),
+            darkTheme: AppTheme.dark(),
             themeMode: settingsController.themeMode,
             initialRoute: LoginPage.routeName,
             routes: {
-              SettingsView.routeName: (_) =>
-                  SettingsView(controller: settingsController),
               LoginPage.routeName: (_) => const LoginPage(),
-              HomePage.routeName: (_) => const HomePage(),
+              MainShell.routeName: (_) =>
+                  MainShell(settingsController: settingsController),
             },
             onGenerateRoute: (RouteSettings routeSettings) {
               if (routeSettings.name == ReviewPage.routeName) {

@@ -7,3 +7,8 @@ const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'https://atq65hnu62.execute-api.us-east-1.amazonaws.com/first',
 );
+
+const String apiKey = String.fromEnvironment(
+  'API_KEY',
+  defaultValue: '4WG7VcXxmp9U67G2plIe4yS3usJFWFI1sesHwKj0',
+);
