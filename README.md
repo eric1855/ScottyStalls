@@ -13,7 +13,11 @@
 
 Built for 7,000+ CMU students who deserve to know what they're walking into.
 
-[Demo Video](#demo) · [Features](#features) · [Architecture](#architecture) · [Run Locally](#getting-started)
+<a href="https://drive.google.com/file/d/1vnNqPjb15x5mxHe_59MipTUJfzSqPFer/view?usp=sharing">
+<img src="https://img.shields.io/badge/🎬_Watch_Demo-4285F4?style=for-the-badge&logo=googledrive&logoColor=white"/>
+</a>
+
+[Features](#features) · [Architecture](#architecture) · [Run Locally](#getting-started)
 
 </div>
 
